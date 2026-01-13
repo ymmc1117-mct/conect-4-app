@@ -51,7 +51,7 @@
         }
 
         .board-bg {
-            background: #03146c;
+            background: #0a2291;
             border-radius: 20px;
             padding: var(--board-padding);
             box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
@@ -217,7 +217,7 @@
                 const isWinning = winningCells.some(([r, c]) => r === rIdx && c === cIdx);
                 return `
                     <div class="cell-container" onclick="dropPiece(${cIdx})" style="cursor: pointer;" data-piece-row="${rIdx}" data-piece-col="${cIdx}">
-                        <div class="cell-content" style="background: #01082d; box-shadow: inset 0 4px 8px rgba(0,0,0,0.4);"></div>
+                        <div class="cell-content" style="background: #03146c; box-shadow: inset 0 4px 8px rgba(0,0,0,0.4);"></div>
                         ${cell !== 0 ? `
                             <div class="cell-piece cell-content ${isWinning ? 'win-glow' : ''}" 
                                  style="background: ${cell === PLAYER1 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #fbbf24, #f59e0b)'}; 
