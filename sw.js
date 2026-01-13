@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'connect4-v1';
+const CACHE_NAME = 'connect4-v2';
 const ASSETS = [
   './',
   './index.html',
