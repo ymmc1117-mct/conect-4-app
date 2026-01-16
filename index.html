@@ -2,15 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#f8fafc">
     
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Connect 4">
+    <meta name="apple-mobile-web-app-status-bar" content="black-translucent">
     <link rel="apple-touch-icon" href="icon512.png">
+    <meta name="format-detection" content="telephone=no">
 
     <title>CONNECT 4 - Responsive AI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
@@ -73,16 +76,17 @@
         html, body {
             margin: 0;
             padding: 0;
-            width: 100vw;
-            /* 画面の高さをsvhに固定して「白余白」を物理的に許さない */
-            height: var(--app-height);
-            min-height: var(--app-height);
+            width: 100%;
+            height: 100%;
+            height: -webkit-fill-available; /* iOS 15以下用のフォールバック */
+            min-height: -webkit-fill-available; /* iOS 15以下用のフォールバック */
             background-color: var(--page-bg);
             overflow: hidden;
             position: fixed;
             top: 0;
             left: 0;
             overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
         }
 
         body {
@@ -98,13 +102,18 @@
             bottom: 0;
             width: 100%;
             height: 100%;
+            height: -webkit-fill-available; /* iOS 15以下用のフォールバック */
+            min-height: -webkit-fill-available; /* iOS 15以下用のフォールバック */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            /* 下部のセーフエリア（iPhoneの棒）を背景色で塗りつぶす */
+            /* 下部のセーフエリア（iPhoneのホームインジケータ）を背景色で塗りつぶす */
+            padding: 0;
+            margin: 0;
             padding-bottom: env(safe-area-inset-bottom);
             background-color: var(--page-bg);
+            overflow: hidden;
         }
 
         #game-container { width: 100%; max-width: var(--board-max-width); margin: 0 auto; display: flex; flex-direction: column; padding: 0 16px; }
@@ -149,7 +158,14 @@
 <body>
     <div id="app"></div>
 
-<script>
+    <script>
+    // iOSでフルスクリーンモードを強制
+    if (window.navigator.standalone) {
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.getElementById('app').style.height = '100%';
+    }
+
     const ROWS = 6; const COLS = 7;
     const PLAYER1 = 1; const PLAYER2 = 2;
 
