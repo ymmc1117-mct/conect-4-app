@@ -112,6 +112,10 @@
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
+        .btn-soft-shadow {
+            box-shadow: var(--shared-soft-shadow); 
+        }
+
 
         /* アニメーション */
         @keyframes drop { 0% { transform: translateY(-100vh); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
@@ -427,7 +431,7 @@
                         <h1 style="font-size: var(--title-size); font-weight: 900; color: #1e293b; letter-spacing: -0.03em;">CONNECT 4</h1>
                         <div style="display: flex; gap: 15px;">
                             <button onclick="undoMove()" ${!canUndo ? 'disabled' : ''} class="rounded-full font-black transition-all ${undoBtnStyle}" style="padding: var(--btn-padding); font-size: var(--btn-text);">UNDO</button>
-                            <button onclick="confirmReset()" class="bg-white text-gray-600 border border-gray-100 rounded-full font-black hover:bg-gray-50 transition-all shadow-sm" style="padding: var(--btn-padding); font-size: var(--btn-text);">RESET</button>
+                            <button onclick="confirmReset()" class="bg-white text-gray-600 border border-gray-100 rounded-full font-black hover:bg-gray-50 transition-all btn-soft-shadow" style="padding: var(--btn-padding); font-size: var(--btn-text);">RESET</button>
                         </div>
                     </div>
                     <div class="board-bg">${gridHtml}</div>
