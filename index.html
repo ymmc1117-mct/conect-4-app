@@ -17,6 +17,7 @@
     <style>
         :root {
             --brand-blue: #0a2291;
+            --page-bg: #f8fafc;
             --normal-btn-bg: #64748b;
             --board-max-width: 560px;
             --board-padding: 14px;
@@ -59,7 +60,8 @@
         }
 
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background-color: #f8fafc; }
+        /* 背景色を白(f8fafc)からページ背景色へ。iOSのセーフエリア外まで塗るために変更 */
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; background-color: var(--page-bg); }
         body { overscroll-behavior: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         #game-container { width: 100%; max-width: var(--board-max-width); margin: 0 auto; display: flex; flex-direction: column; }
         .board-bg { background: var(--brand-blue); border-radius: clamp(16px, 3vh, 36px); padding: var(--board-padding); display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--grid-gap); box-shadow: 0 15px 40px -10px rgba(0,0,0,0.12); }
@@ -341,9 +343,9 @@
         ).join('');
 
         app.innerHTML = `
-            <div id="main-wrapper" style="height: 100dvh; width: 100vw; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); user-select: none; overflow: hidden; background-color: #f8fafc;">
+            <div id="main-wrapper" style="height: 100dvh; width: 100vw; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); user-select: none; overflow: hidden; background-color: var(--page-bg);">
                 ${!gameStarted ? `
-                    <div class="fade-in" style="position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; text-align: center;">
+                    <div class="fade-in" style="position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--page-bg); text-align: center;">
                         <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width);">
                             <h1 style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 40px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
                             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
