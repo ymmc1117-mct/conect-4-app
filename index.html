@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
     <style>
         :root {
+            /* iOS向けの高さ対策: svh (Small Viewport Height) を優先 */
+            --app-height: 100svh;
             --brand-blue: #0a2291;
             --page-bg: #f8fafc;
             --normal-btn-bg: #64748b;
@@ -37,6 +39,13 @@
             --modal-btn-padding: 18px;
             --winner-label-size: 20px;
             --winner-name-size: clamp(54px, 18vw, 90px);
+        }
+
+        /* iOS 15以前のためのフォールバック */
+        @supports not (height: 100svh) {
+            :root {
+                --app-height: -webkit-fill-available;
+            }
         }
 
         @media (min-width: 768px) {
@@ -64,13 +73,15 @@
         html, body {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-            /* iOS Safariの100vh問題を解決する呪文 */
-            height: -webkit-fill-available;
+            width: 100vw;
+            /* 画面の高さをsvhに固定して「白余白」を物理的に許さない */
+            height: var(--app-height);
+            min-height: var(--app-height);
             background-color: var(--page-bg);
             overflow: hidden;
             position: fixed;
+            top: 0;
+            left: 0;
             overscroll-behavior: none;
         }
 
@@ -78,7 +89,25 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         
-        #game-container { width: 100%; max-width: var(--board-max-width); margin: 0 auto; display: flex; flex-direction: column; }
+        /* アプリ全体を囲むラッパーを画面に完全に密着させる */
+        #main-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* 下部のセーフエリア（iPhoneの棒）を背景色で塗りつぶす */
+            padding-bottom: env(safe-area-inset-bottom);
+            background-color: var(--page-bg);
+        }
+
+        #game-container { width: 100%; max-width: var(--board-max-width); margin: 0 auto; display: flex; flex-direction: column; padding: 0 16px; }
         .board-bg { background: var(--brand-blue); border-radius: clamp(16px, 3vh, 36px); padding: var(--board-padding); display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--grid-gap); box-shadow: 0 15px 40px -10px rgba(0,0,0,0.12); }
         .cell-container { position: relative; width: 100%; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; }
         .cell-content { width: calc(100% * var(--piece-scale)); height: calc(100% * var(--piece-scale)); border-radius: 50%; position: absolute; }
@@ -98,6 +127,23 @@
         .btn-soft-shadow { box-shadow: var(--shared-soft-shadow); }
         button { touch-action: manipulation; transition: transform 0.15s ease-out; }
         button:active:not(:disabled) { transform: scale(0.95); }
+
+        /* ダイアログ（暗い背景）を画面最下部まで強制 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100svh;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
     </style>
 </head>
 <body>
@@ -138,7 +184,6 @@
             if (board[row][col] === 0) {
                 isAnimating = true;
                 history.push({ board: board.map(r => [...r]), player: currentPlayer });
-                
                 board[row][col] = currentPlayer;
                 const activePlayer = currentPlayer;
                 render(); 
@@ -174,18 +219,7 @@
             isAnimating = false;
             return;
         }
-        let bestMove;
-        if (aiDifficulty === 'Normal') {
-            if (Math.random() < 0.20) {
-                const validCols = [];
-                for(let c=0; c<COLS; c++) if(getAvailableRow(board, c) !== -1) validCols.push(c);
-                bestMove = validCols[Math.floor(Math.random() * validCols.length)];
-            } else {
-                bestMove = findBestMove(board, 2); 
-            }
-        } else {
-            bestMove = findBestMove(board, 4);
-        }
+        let bestMove = findBestMove(board, aiDifficulty === 'Normal' ? 2 : 4);
         isAnimating = false;
         if (bestMove !== -1) executeMove(bestMove);
     }
@@ -322,16 +356,8 @@
     function undoMove() {
         if (history.length === 0 || isAnimating || winner || isDraw || showResetConfirm) return;
         if (aiTimeoutId) { clearTimeout(aiTimeoutId); aiTimeoutId = null; }
-        if (isAiMode && history.length >= 2) {
-            history.pop(); 
-            const prevState = history.pop();
-            board = prevState.board;
-            currentPlayer = PLAYER1;
-        } else {
-            const prevState = history.pop();
-            board = prevState.board;
-            currentPlayer = prevState.player;
-        }
+        if (isAiMode && history.length >= 2) { history.pop(); const prevState = history.pop(); board = prevState.board; currentPlayer = PLAYER1; }
+        else { const prevState = history.pop(); board = prevState.board; currentPlayer = prevState.player; }
         winner = null; isDraw = false; winningCells = []; isAnimating = false; render();
     }
 
@@ -363,27 +389,27 @@
         ).join('');
 
         app.innerHTML = `
-            <div id="main-wrapper" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0; height: 100%; min-height: -webkit-fill-available; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); user-select: none; overflow: hidden; background-color: var(--page-bg);">
+            <div id="main-wrapper">
                 ${!gameStarted ? `
-                    <div class="fade-in" style="position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--page-bg); text-align: center;">
-                        <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width);">
+                    <div class="modal-overlay fade-in" style="background: var(--page-bg);">
+                        <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width); text-align: center;">
                             <h1 style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 40px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
                             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
-                                <button onclick="startGame(true, 'Normal')" class="btn-soft-shadow" style="background: var(--normal-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none; cursor: pointer;">VS AI NORMAL</button>
-                                <button onclick="startGame(true, 'Hard')" class="btn-soft-shadow" style="background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none; cursor: pointer;">VS AI HARD</button>
-                                <button onclick="startGame(false)" class="btn-soft-shadow" style="background: white; color: var(--brand-blue); width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 2px solid #e2e8f0; cursor: pointer;">VS FRIEND</button>
+                                <button onclick="startGame(true, 'Normal')" class="btn-soft-shadow" style="background: var(--normal-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI NORMAL</button>
+                                <button onclick="startGame(true, 'Hard')" class="btn-soft-shadow" style="background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI HARD</button>
+                                <button onclick="startGame(false)" class="btn-soft-shadow" style="background: white; color: var(--brand-blue); width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 2px solid #e2e8f0;">VS FRIEND</button>
                             </div>
                         </div>
                     </div>
                 ` : ''}
 
                 ${showResetConfirm ? `
-                    <div class="fade-in" style="position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); text-align: center;">
-                        <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width);">
-                            <h3 style="font-size: var(--modal-title); font-weight: 900; color: white; margin-bottom: 40px; text-shadow: 0 2px 10px rgba(0,0,0,0.3);">RESET GAME?</h3>
+                    <div class="modal-overlay fade-in">
+                        <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width); text-align: center;">
+                            <h3 style="font-size: var(--modal-title); font-weight: 900; color: white; margin-bottom: 40px;">RESET GAME?</h3>
                             <div style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
-                                <button onclick="resetGame(true)" class="btn-soft-shadow" style="background: white; color: #ef4444; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 900; font-size: var(--modal-btn-text); border: none; cursor: pointer;">RESET NOW</button>
-                                <button onclick="backToHome()" style="background: rgba(255,255,255,0.3); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 1px solid rgba(255,255,255,0.4); cursor: pointer;">MAIN MENU</button>
+                                <button onclick="resetGame(true)" class="btn-soft-shadow" style="background: white; color: #ef4444; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 900; font-size: var(--modal-btn-text); border: none;">RESET NOW</button>
+                                <button onclick="backToHome()" style="background: rgba(255,255,255,0.3); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 1px solid rgba(255,255,255,0.4);">MAIN MENU</button>
                                 <button onclick="cancelReset()" style="color: white; font-weight: 800; cursor: pointer; background: none; border: none; font-size: var(--modal-btn-text); width: 100%;">CANCEL</button>
                             </div>
                         </div>
@@ -391,7 +417,7 @@
                 ` : ''}
 
                 ${(winner || isDraw) ? `
-                    <div class="fade-in" style="position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));">
+                    <div class="modal-overlay fade-in">
                         <div style="text-align: center; color: white; margin-bottom: 40px;">
                             <p style="font-size: var(--winner-label-size); font-weight: 800; letter-spacing: 0.3em; margin-bottom: 8px;">${isDraw ? 'NO ONE WON' : 'WINNER!'}</p>
                             <h2 style="font-size: var(--winner-name-size); font-weight: 900; line-height: 0.9;">
@@ -406,7 +432,7 @@
                 ` : ''}
 
                 <div id="game-container" style="display: ${gameStarted ? 'flex' : 'none'}; transition: all 0.4s ease; ${(winner || isDraw || showResetConfirm) ? 'filter: blur(8px); transform: scale(0.98);' : ''}">
-                    <div class="header-margin" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 0 4px;">
+                    <div class="header-margin" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                         <h1 style="font-size: var(--title-size); font-weight: 900; color: #1e293b; letter-spacing: -0.03em;">CONNECT 4</h1>
                         <div style="display: flex; gap: 15px;">
                             <button onclick="undoMove()" ${!canUndo ? 'disabled' : ''} class="rounded-full font-black transition-all ${undoBtnStyle}" style="padding: var(--btn-padding); font-size: var(--btn-text);">UNDO</button>
@@ -414,13 +440,13 @@
                         </div>
                     </div>
                     <div class="board-bg">${gridHtml}</div>
-                    <div class="footer-margin" style="margin-top: var(--footer-margin); display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 4px;">
+                    <div class="footer-margin" style="margin-top: var(--footer-margin); display: flex; justify-content: space-between; align-items: center; width: 100%;">
                         <div style="font-size: var(--mode-text-size); font-weight: 800; color: #94a3b8; text-transform: uppercase;">
                             ${isAiMode ? `VS AI ${aiDifficulty.toUpperCase()}` : 'VS FRIEND'}
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span style="font-weight: 900; color: #64748b; font-size: var(--mode-text-size);"> ${(isAiMode && currentPlayer === PLAYER2) ? 'AI...' : 'NEXT'} </span>
-                            <div style="width: var(--next-ui-size); height: var(--next-ui-size); border-radius: 50%; background: ${currentPlayer === PLAYER1 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #fbbf24, #f59e0b)'}; transition: all 0.4s;" class="${(!winner && !isDraw) ? 'animate-pulse' : ''}"></div>
+                            <div style="width: var(--next-ui-size); height: var(--next-ui-size); border-radius: 50%; background: ${currentPlayer === PLAYER1 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #fbbf24, #f59e0b)'};" class="${(!winner && !isDraw) ? 'animate-pulse' : ''}"></div>
                         </div>
                     </div>
                 </div>
@@ -429,13 +455,12 @@
     }
     render();
 
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('SW registered', reg))
-                .catch(err => console.error('SW failed', err));
-        });
-    }
+    // iOS Safariでの高さをJSで補正する追加の対策
+    const setAppHeight = () => {
+        document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+    };
+    window.addEventListener('resize', setAppHeight);
+    setAppHeight();
 </script>
 </body>
 </html>
