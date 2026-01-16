@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="四目並べ">
-    <title>四目並べ</title>
+    <meta name="apple-mobile-web-app-title" content="Connect 4">
+    <title>CONNECT 4 - Responsive AI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
     <style>
         :root {
             --brand-blue: #0a2291;
+            --normal-btn-bg: #64748b;
             --board-max-width: 560px;
             --board-padding: 14px;
             --grid-gap: clamp(4px, 1.5vw, 10px);
@@ -34,7 +35,7 @@
         @media (min-width: 768px) {
             :root { 
                 --board-max-width: 720px; --board-padding: 24px; --title-size: 40px;
-                --btn-text: 18px; --btn-padding: 14px 30px; --mode-text-size: 20px; 
+                --btn-text: 16px; --btn-padding: 10px 24px; --mode-text-size: 20px; 
                 --next-ui-size: 44px; --footer-margin: 40px; --modal-max-width: 500px; 
                 --modal-title: 44px; --modal-btn-text: 22px; --modal-btn-padding: 24px;
                 --winner-label-size: 30px; --winner-name-size: 110px; 
@@ -87,9 +88,16 @@
     let history = []; 
     let gameStarted = false;
     let isAiMode = true;
+    let aiDifficulty = 'Hard';
     let showResetConfirm = false;
+    let aiTimeoutId = null; // AIの思考をキャンセルするためのID
 
-    function startGame(vsAi) { isAiMode = vsAi; gameStarted = true; resetGame(true); }
+    function startGame(vsAi, difficulty = 'Hard') { 
+        isAiMode = vsAi; 
+        aiDifficulty = difficulty;
+        gameStarted = true; 
+        resetGame(true); 
+    }
 
     function dropPiece(col) {
         if (!gameStarted || winner || isDraw || isAnimating || showResetConfirm) return;
@@ -101,7 +109,6 @@
         for (let row = ROWS - 1; row >= 0; row--) {
             if (board[row][col] === 0) {
                 isAnimating = true;
-                // 現在の状態を履歴に保存
                 history.push({ board: board.map(r => [...r]), player: currentPlayer });
                 
                 board[row][col] = currentPlayer;
@@ -120,7 +127,11 @@
                     } else {
                         currentPlayer = activePlayer === PLAYER1 ? PLAYER2 : PLAYER1;
                         if (isAiMode && currentPlayer === PLAYER2 && !winner && !isDraw) {
-                            setTimeout(makeAiMove, 650);
+                            // AIの思考中もアニメーションフラグを保持して操作をロック
+                            isAnimating = true; 
+                            aiTimeoutId = setTimeout(makeAiMove, 650);
+                            render();
+                            return; // AI待ち状態に入るためここで抜ける
                         }
                     }
                     isAnimating = false; render();
@@ -131,14 +142,31 @@
         return false;
     }
 
-    // AI Logic (findBestMove, minimax, evaluate etc... remains same as base)
     function makeAiMove() {
-        if (winner || isDraw || !isAiMode || currentPlayer !== PLAYER2) return;
-        const bestMove = findBestMove(board);
+        if (winner || isDraw || !isAiMode || currentPlayer !== PLAYER2) {
+            isAnimating = false;
+            return;
+        }
+        
+        let bestMove;
+        if (aiDifficulty === 'Normal') {
+            if (Math.random() < 0.20) {
+                const validCols = [];
+                for(let c=0; c<COLS; c++) if(getAvailableRow(board, c) !== -1) validCols.push(c);
+                bestMove = validCols[Math.floor(Math.random() * validCols.length)];
+            } else {
+                bestMove = findBestMove(board, 2); 
+            }
+        } else {
+            bestMove = findBestMove(board, 4);
+        }
+        
+        isAnimating = false; // AIが手を決めたのでフラグを一度リセットしてexecuteMoveに渡す
         if (bestMove !== -1) executeMove(bestMove);
     }
 
-    function findBestMove(b) {
+    // Minimax等のロジック関数群（変更なし）
+    function findBestMove(b, depth) {
         const columnOrder = [3, 2, 4, 1, 5, 0, 6];
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
@@ -156,6 +184,7 @@
                 if (checkBoardWinner(testBoard, PLAYER1)) return col;
             }
         }
+
         let bestScore = -Infinity; let bestCol = 3;
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
@@ -163,10 +192,13 @@
                 const testBoard = b.map(r => [...r]);
                 testBoard[row][col] = PLAYER2;
                 if (!givesOpponentWin(testBoard, PLAYER1)) {
-                    const score = minimax(testBoard, 4, -Infinity, Infinity, false);
+                    const score = minimax(testBoard, depth, -Infinity, Infinity, false);
                     if (score > bestScore) { bestScore = score; bestCol = col; }
                 }
             }
+        }
+        if (getAvailableRow(b, bestCol) === -1) {
+            for(let c of columnOrder) if(getAvailableRow(b, c) !== -1) return c;
         }
         return bestCol;
     }
@@ -266,25 +298,24 @@
 
     function undoMove() {
         if (history.length === 0 || isAnimating || winner || isDraw || showResetConfirm) return;
+        
+        // AIの思考（setTimeout）が進行中の場合はキャンセル
+        if (aiTimeoutId) {
+            clearTimeout(aiTimeoutId);
+            aiTimeoutId = null;
+        }
 
         if (isAiMode && history.length >= 2) {
-            // AIの手を取り除く
             history.pop(); 
-            // 自分の手を打つ前の状態を取り出して反映
             const prevState = history.pop();
             board = prevState.board;
-            currentPlayer = PLAYER1; // 常に自分の番に戻る
+            currentPlayer = PLAYER1;
         } else {
-            // 対人モードまたは最初の手の場合
             const prevState = history.pop();
             board = prevState.board;
             currentPlayer = prevState.player;
         }
-        
-        winner = null;
-        isDraw = false;
-        winningCells = [];
-        render();
+        winner = null; isDraw = false; winningCells = []; isAnimating = false; render();
     }
 
     function backToHome() { gameStarted = false; showResetConfirm = false; resetGame(false); }
@@ -292,6 +323,7 @@
     function cancelReset() { showResetConfirm = false; render(); }
     
     function resetGame(keepStarted = true) {
+        if (aiTimeoutId) clearTimeout(aiTimeoutId);
         board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
         currentPlayer = PLAYER1; winner = null; isDraw = false; winningCells = []; isAnimating = false; history = [];
         showResetConfirm = false; gameStarted = keepStarted; render();
@@ -300,7 +332,7 @@
     function render() {
         const app = document.getElementById('app');
         const canUndo = history.length > 0 && !winner && !isDraw && !isAnimating && !showResetConfirm;
-        let undoBtnStyle = canUndo ? "bg-white text-gray-700 btn-soft-shadow" : "bg-gray-100 text-gray-400 cursor-not-allowed";
+        const undoBtnStyle = canUndo ? "bg-white text-gray-600 btn-soft-shadow" : "bg-gray-100 text-gray-400 cursor-not-allowed";
 
         const gridHtml = board.map((row, rIdx) => 
             row.map((cell, cIdx) => {
@@ -320,8 +352,9 @@
                     <div class="fade-in" style="position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; text-align: center;">
                         <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width);">
                             <h1 style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 40px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
-                            <div style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
-                                <button onclick="startGame(true)" class="btn-soft-shadow" style="background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none; cursor: pointer;">VS COMPUTER</button>
+                            <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
+                                <button onclick="startGame(true, 'Normal')" class="btn-soft-shadow" style="background: var(--normal-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none; cursor: pointer;">VS AI NORMAL</button>
+                                <button onclick="startGame(true, 'Hard')" class="btn-soft-shadow" style="background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none; cursor: pointer;">VS AI HARD</button>
                                 <button onclick="startGame(false)" class="btn-soft-shadow" style="background: white; color: var(--brand-blue); width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 2px solid #e2e8f0; cursor: pointer;">VS FRIEND</button>
                             </div>
                         </div>
@@ -335,7 +368,7 @@
                             <div style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
                                 <button onclick="resetGame(true)" class="btn-soft-shadow" style="background: white; color: #ef4444; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 900; font-size: var(--modal-btn-text); border: none; cursor: pointer;">RESET NOW</button>
                                 <button onclick="backToHome()" style="background: rgba(255,255,255,0.2); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 1px solid rgba(255,255,255,0.3); cursor: pointer; backdrop-filter: blur(8px);">MAIN MENU</button>
-                                <button onclick="cancelReset()" style="color: white; font-weight: 800; margin-top: 8px; cursor: pointer; background: none;">CANCEL</button>
+                                <button onclick="cancelReset()" style="color: white; font-weight: 800; cursor: pointer; background: none; border: none; font-size: var(--modal-btn-text); width: 100%;">CANCEL</button>
                             </div>
                         </div>
                     </div>
@@ -359,14 +392,16 @@
                 <div id="game-container" style="display: ${gameStarted ? 'flex' : 'none'}; transition: all 0.4s ease; ${(winner || isDraw || showResetConfirm) ? 'filter: blur(8px); transform: scale(0.98);' : ''}">
                     <div class="header-margin" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 0 4px;">
                         <h1 style="font-size: var(--title-size); font-weight: 900; color: #1e293b; letter-spacing: -0.03em;">CONNECT 4</h1>
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 15px;">
                             <button onclick="undoMove()" ${!canUndo ? 'disabled' : ''} class="rounded-full font-black transition-all ${undoBtnStyle}" style="padding: var(--btn-padding); font-size: var(--btn-text);">UNDO</button>
-                            <button onclick="confirmReset()" class="bg-white text-gray-500 border border-gray-100 rounded-full font-black hover:bg-gray-50 transition-all btn-soft-shadow" style="padding: var(--btn-padding); font-size: var(--btn-text);">RESET</button>
+                            <button onclick="confirmReset()" class="bg-white text-gray-600 border border-gray-100 rounded-full font-black hover:bg-gray-50 transition-all btn-soft-shadow" style="padding: var(--btn-padding); font-size: var(--btn-text);">RESET</button>
                         </div>
                     </div>
                     <div class="board-bg">${gridHtml}</div>
                     <div class="footer-margin" style="margin-top: var(--footer-margin); display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 4px;">
-                        <div style="font-size: var(--mode-text-size); font-weight: 800; color: #94a3b8; text-transform: uppercase;">${isAiMode ? 'VS COMPUTER' : 'VS FRIEND'}</div>
+                        <div style="font-size: var(--mode-text-size); font-weight: 800; color: #94a3b8; text-transform: uppercase;">
+                            ${isAiMode ? `VS AI ${aiDifficulty.toUpperCase()}` : 'VS FRIEND'}
+                        </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span style="font-weight: 900; color: #64748b; font-size: var(--mode-text-size);"> ${(isAiMode && currentPlayer === PLAYER2) ? 'AI...' : 'NEXT'} </span>
                             <div style="width: var(--next-ui-size); height: var(--next-ui-size); border-radius: 50%; background: ${currentPlayer === PLAYER1 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #fbbf24, #f59e0b)'}; transition: all 0.4s;" class="${(!winner && !isDraw) ? 'animate-pulse' : ''}"></div>
