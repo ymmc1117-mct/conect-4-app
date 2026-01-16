@@ -19,8 +19,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
     <style>
         :root {
-            /* iOS向けの高さ対策: svh (Small Viewport Height) を優先 */
-            --app-height: 100svh;
+            /* ★修正: window.innerHeight をJSで動的に設定 */
+            --app-height: 100vh;
             --brand-blue: #0a2291;
             --page-bg: #f8fafc;
             --normal-btn-bg: #64748b;
@@ -42,13 +42,6 @@
             --modal-btn-padding: 18px;
             --winner-label-size: 20px;
             --winner-name-size: clamp(54px, 18vw, 90px);
-        }
-
-        /* iOS 15以前のためのフォールバック */
-        @supports not (height: 100svh) {
-            :root {
-                --app-height: 100vh;
-            }
         }
 
         @media (min-width: 768px) {
@@ -73,14 +66,13 @@
 
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         
+        /* ★修正: html, body を完全に画面に固定 */
         html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             height: var(--app-height);
-            min-height: 100%;
-            min-height: var(--app-height);
             background-color: var(--page-bg);
             overflow: hidden;
             position: fixed;
@@ -94,7 +86,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         
-        /* アプリ全体を囲むラッパーを画面に完全に密着させる */
+        /* ★修正: padding-bottom を削除し、完全に画面にフィット */
         #main-wrapper {
             position: fixed;
             top: 0;
@@ -104,16 +96,12 @@
             width: 100%;
             height: 100%;
             height: var(--app-height);
-            min-height: 100%;
-            min-height: var(--app-height);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            /* 下部のセーフエリア（iPhoneのホームインジケータ）を背景色で塗りつぶす */
             padding: 0;
             margin: 0;
-            padding-bottom: env(safe-area-inset-bottom);
             background-color: var(--page-bg);
             overflow: hidden;
         }
@@ -139,13 +127,15 @@
         button { touch-action: manipulation; transition: transform 0.15s ease-out; }
         button:active:not(:disabled) { transform: scale(0.95); }
 
-        /* ダイアログ（暗い背景）を画面最下部まで強制 */
+        /* ★修正: モーダルも同様に完全に画面にフィット */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
             height: var(--app-height);
             background: rgba(0,0,0,0.6);
             z-index: 100;
@@ -153,7 +143,6 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding-bottom: env(safe-area-inset-bottom);
         }
     </style>
 </head>
@@ -457,7 +446,7 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <span style="font-weight: 900; color: #64748b; font-size: var(--mode-text-size);"> ${(isAiMode && currentPlayer === PLAYER2) ? 'AI...' : 'NEXT'} </span>
-                            <div style="width: var(--next-ui-size); height: var(--next-ui-size); border-radius: 50%; background: ${currentPlayer === PLAYER1 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #fbbf24, #f59e0b)'};" class="${(!winner && !isDraw) ? 'animate-pulse' : ''}"></div>
+                            <div style="width: var(--next-ui-size); height: var(--next-ui-size); border-radius: 50%; background: ${currentPlayer === PLAYER1 ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #​​​​​​​​​​​​​​​​fbbf24, #f59e0b)'};" class="${(!winner && !isDraw) ? 'animate-pulse' : ''}"></div>
                         </div>
                     </div>
                 </div>
@@ -466,12 +455,20 @@
     }
     render();
 
-    // iOS Safariでの高さをJSで補正する追加の対策
+    // ★修正: iOS Safariでの高さをJSで補正（ページロード時と画面回転時）
     const setAppHeight = () => {
-        document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+        const vh = window.innerHeight;
+        document.documentElement.style.setProperty('--app-height', `${vh}px`);
     };
-    window.addEventListener('resize', setAppHeight);
+    
+    // 初回実行
     setAppHeight();
+    
+    // リサイズ・回転時に再計算
+    window.addEventListener('resize', setAppHeight);
+    window.addEventListener('orientationchange', () => {
+        setTimeout(setAppHeight, 100);
+    });
 </script>
 </body>
 </html>
