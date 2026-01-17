@@ -220,24 +220,37 @@
     }
 
     function findBestMove(b, depth) {
-        const columnOrder = [3, 2, 4, 1, 5, 0, 6];
+        // 探索順序をシャッフルして、同じ評価の手がある場合にばらつかせる
+        const columnOrder = [3, 2, 4, 1, 5, 0, 6].sort(() => Math.random() - 0.5);
+        
+        // 1. 即勝利できる手があればランダムに選ぶ（複数ある場合）
+        let winningMoves = [];
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
             if (row !== -1) {
                 const testBoard = b.map(r => [...r]);
                 testBoard[row][col] = PLAYER2;
-                if (checkBoardWinner(testBoard, PLAYER2)) return col;
+                if (checkBoardWinner(testBoard, PLAYER2)) winningMoves.push(col);
             }
         }
+        if (winningMoves.length > 0) return winningMoves[Math.floor(Math.random() * winningMoves.length)];
+
+        // 2. 相手が次で勝つ手があれば、それを防ぐ手をランダムに選ぶ
+        let blockingMoves = [];
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
             if (row !== -1) {
                 const testBoard = b.map(r => [...r]);
                 testBoard[row][col] = PLAYER1;
-                if (checkBoardWinner(testBoard, PLAYER1)) return col;
+                if (checkBoardWinner(testBoard, PLAYER1)) blockingMoves.push(col);
             }
         }
-        let bestScore = -Infinity; let bestCol = 3;
+        if (blockingMoves.length > 0) return blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
+
+        // 3. ミニマックス法で最善のスコアを持つ手をすべて集めて、その中からランダムに選ぶ
+        let bestScore = -Infinity;
+        let bestMoves = [];
+        
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
             if (row !== -1) {
@@ -245,14 +258,23 @@
                 testBoard[row][col] = PLAYER2;
                 if (!givesOpponentWin(testBoard, PLAYER1)) {
                     const score = minimax(testBoard, depth, -Infinity, Infinity, false);
-                    if (score > bestScore) { bestScore = score; bestCol = col; }
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMoves = [col];
+                    } else if (score === bestScore) {
+                        bestMoves.push(col);
+                    }
                 }
             }
         }
-        if (getAvailableRow(b, bestCol) === -1) {
-            for(let c of columnOrder) if(getAvailableRow(b, c) !== -1) return c;
+        
+        if (bestMoves.length > 0) {
+            return bestMoves[Math.floor(Math.random() * bestMoves.length)];
         }
-        return bestCol;
+
+        // 4. どこにも打てない場合や負け確定の場合のフォールバック
+        const availableCols = columnOrder.filter(c => getAvailableRow(b, c) !== -1);
+        return availableCols.length > 0 ? availableCols[Math.floor(Math.random() * availableCols.length)] : -1;
     }
 
     function minimax(b, depth, alpha, beta, isMaximizing) {
