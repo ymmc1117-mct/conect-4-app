@@ -64,7 +64,6 @@
             flex-direction: column;
         }
 
-        /* 立ち上げ時のビク付き防止：最初は隠しておき、準備ができたらフェードイン */
         #app {
             height: 100%;
             display: flex;
@@ -114,6 +113,9 @@
             justify-content: center;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
+            /* iPadでのガク付き防止（オーバーレイ全体） */
+            -webkit-backdrop-filter: blur(0); 
+            will-change: opacity;
         }
         .btn-soft-shadow {
             box-shadow: var(--shared-soft-shadow); 
@@ -127,16 +129,22 @@
         .fade-in { animation: fadeIn 1.2s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .pop-up { animation: popUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes popUp { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+        /* translateZ(0) を追加してiPadのGPUパワーを最初から引き出す */
+        .pop-up { 
+            animation: popUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transform: translateZ(0);
+            will-change: transform, opacity;
+        }
+        @keyframes popUp { from { opacity: 0; transform: scale(0.96) translateZ(0); } to { opacity: 1; transform: scale(1) translateZ(0); } }
 
         .stagger-up { 
             opacity: 0; 
-            animation: staggerUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+            animation: staggerUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transform: translateZ(0);
         }
         @keyframes staggerUp { 
-            from { opacity: 0; transform: translateY(20px); } 
-            to { opacity: 1; transform: translateY(0); } 
+            from { opacity: 0; transform: translateY(20px) translateZ(0); } 
+            to { opacity: 1; transform: translateY(0) translateZ(0); } 
         }
         
         button { touch-action: manipulation; transition: transform 0.1s; }
