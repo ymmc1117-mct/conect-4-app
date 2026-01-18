@@ -64,6 +64,18 @@
             flex-direction: column;
         }
 
+        /* 立ち上げ時のビク付き防止：最初は隠しておき、準備ができたらフェードイン */
+        #app {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            animation: appAppear 0.8s ease-out 0.2s forwards;
+        }
+        @keyframes appAppear {
+            to { opacity: 1; }
+        }
+
         #main-wrapper {
             width: 100%;
             height: 100%;
@@ -112,14 +124,12 @@
         @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.6); transform: scale(0.95); border: 4px solid white; } 50% { box-shadow: 0 0 35px 12px rgba(255, 255, 255, 0.8); transform: scale(1.03); border: 4px solid white; } }
         .win-glow { animation: pulse-glow 1.5s ease-in-out infinite; z-index: 5; }
         
-        /* フェード時間を1.2sに延長して「スーッ」と見えるように */
         .fade-in { animation: fadeIn 1.2s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .pop-up { animation: popUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes popUp { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 
-        /* ボタンのふわっと感を出すため、時間延長と移動距離の微減 */
         .stagger-up { 
             opacity: 0; 
             animation: staggerUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
@@ -144,7 +154,7 @@
     </style>
 </head>
 <body>
-    <div id="app" style="height: 100%; display: flex; flex-direction: column;"></div>
+    <div id="app"></div>
 
 <script>
     const ROWS = 6; const COLS = 7;
