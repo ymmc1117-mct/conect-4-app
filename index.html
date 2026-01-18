@@ -426,9 +426,9 @@
         ).join('');
 
         app.innerHTML = `
-            <div id="main-wrapper">
+            <div id="main-wrapper" class="fade-in">
                 ${!gameStarted ? `
-                    <div class="modal-overlay fade-in" style="background: var(--page-bg);">
+                    <div class="modal-overlay" style="background: var(--page-bg);">
                         <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width); text-align: center;">
                             <h1 style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 40px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
                             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
@@ -468,7 +468,7 @@
                     </div>
                 ` : ''}
 
-                <div id="game-container" class="fade-in" style="display: ${gameStarted ? 'flex' : 'none'}; ${(winner || isDraw || showResetConfirm) ? 'filter: blur(8px); transition: filter 0.3s;' : 'transition: filter 0.3s;'}">
+                <div id="game-container" style="display: ${gameStarted ? 'flex' : 'none'}; ${(winner || isDraw || showResetConfirm) ? 'filter: blur(8px); transition: filter 0.3s;' : 'transition: filter 0.3s;'}">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                         <h1 style="font-size: var(--title-size); font-weight: 900; color: #1e293b; letter-spacing: -0.03em;">CONNECT 4</h1>
                         <div style="display: flex; gap: 15px;">
