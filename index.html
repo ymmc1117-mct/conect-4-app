@@ -113,7 +113,6 @@
             justify-content: center;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
-            /* iPadでのガク付き防止（オーバーレイ全体） */
             -webkit-backdrop-filter: blur(0); 
             will-change: opacity;
         }
@@ -129,7 +128,6 @@
         .fade-in { animation: fadeIn 1.2s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* translateZ(0) を追加してiPadのGPUパワーを最初から引き出す */
         .pop-up { 
             animation: popUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             transform: translateZ(0);
@@ -241,10 +239,7 @@
 
     function findBestMove(b, depth) {
         const columnOrder = [3, 2, 4, 1, 5, 0, 6].sort(() => Math.random() - 0.5);
-        if (aiDifficulty === 'Normal' && Math.random() < 0.2) {
-            const available = columnOrder.filter(c => getAvailableRow(b, c) !== -1);
-            if (available.length > 0) return available[Math.floor(Math.random() * available.length)];
-        }
+        
         let winningMoves = [];
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
