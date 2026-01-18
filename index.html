@@ -123,21 +123,13 @@
         @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.6); transform: scale(0.95); border: 4px solid white; } 50% { box-shadow: 0 0 35px 12px rgba(255, 255, 255, 0.8); transform: scale(1.03); border: 4px solid white; } }
         .win-glow { animation: pulse-glow 1.5s ease-in-out infinite; z-index: 5; }
         
-        /* フェードインの強化（時間は長めに） */
+        /* 修正：ふわっとしたフェードイン */
         .fade-in { animation: fadeIn 0.6s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* ポップアップの強化（移動距離を増やし、バネ感を出す） */
-        .pop-up { animation: popUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        @keyframes popUp { 
-            from { opacity: 0; transform: translateY(60px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        
-        /* 時間差アニメーション用の遅延クラス */
-        .delay-100 { animation-delay: 0.1s; }
-        .delay-200 { animation-delay: 0.2s; }
-        .delay-300 { animation-delay: 0.3s; }
+        /* 修正：下からではなく、少しだけ浮き上がるようなポップアップ */
+        .pop-up { animation: popUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes popUp { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
         
         button { touch-action: manipulation; transition: transform 0.1s; }
         button:active { transform: scale(0.96); }
@@ -226,17 +218,23 @@
             isAnimating = false;
             return;
         }
+        // Normalなら深さ2、Hardなら深さ4で探索
         let bestMove = findBestMove(board, aiDifficulty === 'Normal' ? 2 : 4);
         isAnimating = false;
         if (bestMove !== -1) executeMove(bestMove);
     }
 
     function findBestMove(b, depth) {
+        // 探索順序を常にシャッフル
         const columnOrder = [3, 2, 4, 1, 5, 0, 6].sort(() => Math.random() - 0.5);
+        
+        // 【NORMAL専用】20%の確率で完全ランダムな手（うっかり）を選択してパターン化を防止
         if (aiDifficulty === 'Normal' && Math.random() < 0.2) {
             const available = columnOrder.filter(c => getAvailableRow(b, c) !== -1);
             if (available.length > 0) return available[Math.floor(Math.random() * available.length)];
         }
+
+        // 1. 即勝利できる手があるかチェック
         let winningMoves = [];
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
@@ -247,6 +245,8 @@
             }
         }
         if (winningMoves.length > 0) return winningMoves[Math.floor(Math.random() * winningMoves.length)];
+
+        // 2. 相手が次で勝つ手があるかチェックして防ぐ
         let blockingMoves = [];
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
@@ -257,16 +257,23 @@
             }
         }
         if (blockingMoves.length > 0) return blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
+
+        // 3. ミニマックス法で評価。
         let bestScore = -Infinity;
         let candidates = [];
+        // NORMALなら判定を甘く（15点差まで許容）、HARDなら厳しく（2点差まで）
         const threshold = aiDifficulty === 'Normal' ? 15 : 2;
+        
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
             if (row !== -1) {
                 const testBoard = b.map(r => [...r]);
                 testBoard[row][col] = PLAYER2;
+                
                 if (!givesOpponentWin(testBoard, PLAYER1)) {
+                    // わずかなノイズを加えて評価を揺らす
                     const score = minimax(testBoard, depth, -Infinity, Infinity, false) + (Math.random() * 2 - 1);
+                    
                     if (score > bestScore + threshold) {
                         bestScore = score;
                         candidates = [col];
@@ -276,7 +283,12 @@
                 }
             }
         }
-        if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+        
+        if (candidates.length > 0) {
+            return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+        // 負け確定や打つ場所がない場合のフォールバック
         const availableCols = columnOrder.filter(c => getAvailableRow(b, c) !== -1);
         return availableCols.length > 0 ? availableCols[0] : -1;
     }
@@ -285,6 +297,7 @@
         if (checkBoardWinner(b, PLAYER2)) return 10000;
         if (checkBoardWinner(b, PLAYER1)) return -10000;
         if (depth === 0 || isBoardFull(b)) return evaluateBoard(b);
+        
         const columnOrder = [3, 2, 4, 1, 5, 0, 6];
         if (isMaximizing) {
             let maxScore = -Infinity;
@@ -416,12 +429,12 @@
             <div id="main-wrapper">
                 ${!gameStarted ? `
                     <div class="modal-overlay fade-in" style="background: var(--page-bg);">
-                        <div style="width: var(--modal-width); max-width: var(--modal-max-width); text-align: center;">
-                            <h1 class="pop-up" style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 40px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
+                        <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width); text-align: center;">
+                            <h1 style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 40px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
                             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
-                                <button onclick="startGame(true, 'Normal')" class="btn-soft-shadow pop-up delay-100" style="background: var(--normal-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI NORMAL</button>
-                                <button onclick="startGame(true, 'Hard')" class="btn-soft-shadow pop-up delay-200" style="background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI HARD</button>
-                                <button onclick="startGame(false)" class="btn-soft-shadow pop-up delay-300" style="background: white; color: var(--brand-blue); width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 2px solid #e2e8f0;">VS FRIEND</button>
+                                <button onclick="startGame(true, 'Normal')" class="btn-soft-shadow" style="background: var(--normal-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI NORMAL</button>
+                                <button onclick="startGame(true, 'Hard')" class="btn-soft-shadow" style="background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI HARD</button>
+                                <button onclick="startGame(false)" class="btn-soft-shadow" style="background: white; color: var(--brand-blue); width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 2px solid #e2e8f0;">VS FRIEND</button>
                             </div>
                         </div>
                     </div>
@@ -448,7 +461,7 @@
                                 ${isDraw ? '<span style="color: #cbd5e1;">DRAW</span>' : `<span style="color: ${winner === PLAYER1 ? '#ef4444' : '#fbbf24'};">${winner === PLAYER1 ? 'RED' : 'YELLOW'}</span>`}
                             </h2>
                         </div>
-                        <div class="pop-up delay-100" style="width: 100%; max-width: var(--modal-max-width); display: flex; flex-direction: column; gap: 16px;">
+                        <div class="pop-up" style="width: 100%; max-width: var(--modal-max-width); display: flex; flex-direction: column; gap: 16px;">
                             <button onclick="resetGame(true)" style="background: rgba(255,255,255,0.3); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 1px solid rgba(255,255,255,0.4); cursor: pointer;">PLAY AGAIN</button>
                             <button onclick="backToHome()" style="background: rgba(255,255,255,0.3); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 1px solid rgba(255,255,255,0.4); cursor: pointer;">MAIN MENU</button>
                         </div>
