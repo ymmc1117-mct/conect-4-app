@@ -19,6 +19,7 @@
             --brand-blue: #0a2291;
             --page-bg: #f8fafc;
             --normal-btn-bg: #64748b;
+            --pro-btn-bg: #0f172a;
             --board-max-width: 560px;
             --board-padding: 14px;
             --grid-gap: clamp(4px, 1.5vw, 10px);
@@ -64,16 +65,14 @@
             flex-direction: column;
         }
 
-        /* 起動時の巨大化・ガタ付きを隠す設定 */
         #app {
             height: 100%;
             display: flex;
             flex-direction: column;
-            opacity: 0; /* 最初は完全に透明 */
-            transition: opacity 0.6s ease-out; /* JSでクラスが付与されたら滑らかに出す */
+            opacity: 0;
+            transition: opacity 0.6s ease-out;
         }
         
-        /* 準備完了後に付与するクラス */
         #app.ready {
             opacity: 1;
         }
@@ -235,7 +234,12 @@
             isAnimating = false;
             return;
         }
-        let bestMove = findBestMove(board, aiDifficulty === 'Normal' ? 2 : 4);
+        // PROなら深さ6、Hardなら4、Normalなら2
+        let depth = 4;
+        if (aiDifficulty === 'Normal') depth = 2;
+        else if (aiDifficulty === 'Pro') depth = 6;
+
+        let bestMove = findBestMove(board, depth);
         isAnimating = false;
         if (bestMove !== -1) executeMove(bestMove);
     }
@@ -263,9 +267,14 @@
             }
         }
         if (blockingMoves.length > 0) return blockingMoves[Math.floor(Math.random() * blockingMoves.length)];
+        
         let bestScore = -Infinity;
         let candidates = [];
-        const threshold = aiDifficulty === 'Normal' ? 15 : 2;
+        // PROは誤差なし、Normalは大きめ、Hardはわずかな揺らぎ
+        let threshold = 2;
+        if (aiDifficulty === 'Normal') threshold = 15;
+        else if (aiDifficulty === 'Pro') threshold = 0;
+
         for (const col of columnOrder) {
             const row = getAvailableRow(b, col);
             if (row !== -1) {
@@ -423,11 +432,12 @@
                 ${!gameStarted ? `
                     <div class="modal-overlay" style="background: var(--page-bg);">
                         <div class="pop-up" style="width: var(--modal-width); max-width: var(--modal-max-width); text-align: center;">
-                            <h1 style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 40px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
-                            <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
-                                <button onclick="startGame(true, 'Normal')" class="btn-soft-shadow stagger-up" style="animation-delay: 0.3s; background: var(--normal-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI NORMAL</button>
-                                <button onclick="startGame(true, 'Hard')" class="btn-soft-shadow stagger-up" style="animation-delay: 0.5s; background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI HARD</button>
-                                <button onclick="startGame(false)" class="btn-soft-shadow stagger-up" style="animation-delay: 0.7s; background: white; color: var(--brand-blue); width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 2px solid #e2e8f0;">VS FRIEND</button>
+                            <h1 style="font-size: clamp(36px, 12vw, 68px); font-weight: 900; color: var(--brand-blue); margin-bottom: 30px; letter-spacing: -0.05em; line-height: 1;">CONNECT 4</h1>
+                            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+                                <button onclick="startGame(true, 'Normal')" class="btn-soft-shadow stagger-up" style="animation-delay: 0.2s; background: var(--normal-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI NORMAL</button>
+                                <button onclick="startGame(true, 'Hard')" class="btn-soft-shadow stagger-up" style="animation-delay: 0.3s; background: var(--brand-blue); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI HARD</button>
+                                <button onclick="startGame(true, 'Pro')" class="btn-soft-shadow stagger-up" style="animation-delay: 0.4s; background: var(--pro-btn-bg); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: none;">VS AI PRO</button>
+                                <button onclick="startGame(false)" class="btn-soft-shadow stagger-up" style="animation-delay: 0.5s; background: white; color: var(--brand-blue); width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 2px solid #e2e8f0;">VS FRIEND</button>
                             </div>
                         </div>
                     </div>
@@ -482,8 +492,6 @@
                 </div>
             </div>
         `;
-        
-        // iPadの向き計算が落ち着くのを100msだけ待ってからフェードインさせる
         setTimeout(() => app.classList.add('ready'), 100);
     }
     render();
