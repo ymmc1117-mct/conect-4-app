@@ -535,10 +535,20 @@
                 ${(winner || isDraw) ? `
                     <div class="modal-overlay fade-in">
                         <div class="pop-up" style="text-align: center; color: white; margin-bottom: 40px;">
-                            <p style="font-size: var(--winner-label-size); font-weight: 800; letter-spacing: 0.3em; margin-bottom: 8px;">${isDraw ? 'NO ONE WON' : 'WINNER!'}</p>
-                            <h2 style="font-size: var(--winner-name-size); font-weight: 900; line-height: 0.9;">
-                                ${isDraw ? '<span style="color: #cbd5e1;">DRAW</span>' : `<span style="color: ${winner === PLAYER1 ? '#ef4444' : '#fbbf24'};">${winner === PLAYER1 ? 'RED' : 'YELLOW'}</span>`}
-                            </h2>
+                            ${isDraw ? `
+                                <p style="font-size: var(--winner-label-size); font-weight: 800; letter-spacing: 0.3em; margin-bottom: 8px;">NO ONE WON</p>
+                                <h2 style="font-size: var(--winner-name-size); font-weight: 900; line-height: 0.9;"><span style="color: #cbd5e1;">DRAW</span></h2>
+                            ` : (isAiMode ? `
+                                <p style="font-size: var(--winner-label-size); font-weight: 800; letter-spacing: 0.1em; margin-bottom: 8px; opacity: 0.8;">LEVEL: ${aiDifficulty.toUpperCase()}</p>
+                                <h2 style="font-size: var(--winner-name-size); font-weight: 900; line-height: 0.9;">
+                                    ${winner !== aiPlayer ? 'YOU WIN!' : 'YOU LOSE...'}
+                                </h2>
+                            ` : `
+                                <p style="font-size: var(--winner-label-size); font-weight: 800; letter-spacing: 0.3em; margin-bottom: 8px;">WINNER!</p>
+                                <h2 style="font-size: var(--winner-name-size); font-weight: 900; line-height: 0.9;">
+                                    <span style="color: ${winner === PLAYER1 ? '#ef4444' : '#fbbf24'};">${winner === PLAYER1 ? 'RED' : 'YELLOW'}</span>
+                                </h2>
+                            `)}
                         </div>
                         <div class="pop-up" style="width: 100%; max-width: var(--modal-max-width); display: flex; flex-direction: column; gap: 16px;">
                             <button onclick="resetGame(true)" style="background: rgba(255,255,255,0.3); color: white; width: 100%; padding: var(--modal-btn-padding); border-radius: 100px; font-weight: 800; font-size: var(--modal-btn-text); border: 1px solid rgba(255,255,255,0.4); cursor: pointer;">PLAY AGAIN</button>
